@@ -1,0 +1,10 @@
+//
+// Created by felix on 07.11.22.
+//
+#ifndef UNTITLED_DRIVER_H
+#define UNTITLED_DRIVER_H
+
+#define USB_VENDOR_ID_RAZER 0x1532
+#define USB_DEVICE_RAZER_NARI_ULTIMATE 0x051a
+
+#endif //UNTITLED_DRIVER_H
