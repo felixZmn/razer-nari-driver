@@ -33,3 +33,4 @@ uninstall:
 	@echo -e "\n\033[34m uninstall driver\033[0m"
 	@echo "====================================================="
 	@rm -fv $(MODULEDIR)/razer_nari_ultimate_driver.ko
+	@rmmod razer_nari_ultimate_driver
