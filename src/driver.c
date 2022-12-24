@@ -2,11 +2,11 @@
 // Created by felix on 07.11.22.
 //
 
-#include "../../razer-nari-driver/src/razer_nari_ultimate_driver.h"
+#include "../../razer-nari-driver/src/driver.h"
+#include "nari.h"
 #include <linux/module.h>
 #include <linux/hid.h>
 #include <linux/sysfs.h>
-#include <linux/usb.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Felix Zimmermann <felix.zimmermann.1.de@gmail.com>");
@@ -16,7 +16,24 @@ MODULE_VERSION("0.0.9");
 struct myDevice {
     struct device *dev;
     long myParam;
+    int mute;
 };
+
+static ssize_t read_mute_state(struct device *dev, struct device_attribute *attr, char *buf){
+    return sysfs_emit(buf, "%s\n", "0"); // returns always 0
+}
+
+static ssize_t set_mute_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count){
+    if (*buf == '0'){
+        printk(KERN_ALERT "%s", "calling unmute");
+        unmute_mic(dev);
+    } else if (*buf == '1'){
+        printk(KERN_ALERT "%s", "calling mute");
+        mute_mic(dev);
+    }
+    return sizeof(count);
+}
+
 
 static ssize_t get_value(struct device *dev, struct device_attribute *attr, char *buf){
     return sysfs_emit(buf, "%s\n", "foobar2000");
@@ -26,20 +43,21 @@ static ssize_t store_value(struct device *dev, struct device_attribute *attr, co
     // missbehaves: echo "foobar2000" > myParam results in
     // foobar2000
     // 00
-
     printk(KERN_ALERT "%s", buf);
     return sizeof(count);
 }
 
+static DEVICE_ATTR(mute, S_IRUGO | S_IWUSR, read_mute_state, set_mute_state);
 static DEVICE_ATTR(myParam, S_IRUGO | S_IWUSR, get_value, store_value);
 
 static struct attribute *nari_attrs[] = {
         &dev_attr_myParam.attr,
+        &dev_attr_mute.attr,
         NULL
 };
 
 static const struct attribute_group nari_attr_group = {
-        .attrs = nari_attrs
+        .attrs = nari_attrs,
 };
 
 /* newly inserted */
@@ -88,18 +106,3 @@ static struct hid_driver razer_nari_driver = {
 };
 
 module_hid_driver(razer_nari_driver);
-
-/*
-    struct usb_interface *intf = to_usb_interface(hdev->dev.parent);
-    struct usb_device *usbdev = interface_to_usbdev(intf);
-
-    __u8 request = 1;
-    __u8 requesttype = 0x21;
-    __u16 value = 0x0100;
-    __u16 index = 0x0300;
-    char *data = "00";
-    __u16 size = 10;
-    int timeout = USB_CTRL_SET_TIMEOUT;
-
-    usb_control_msg(usbdev, usb_sndctrlpipe(usbdev, 0), request, requesttype, value, index, data, size, timeout);
-*/
