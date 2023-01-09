@@ -19,16 +19,18 @@ struct myDevice {
     int mute;
 };
 
+struct myDevice *headset;
+
 static ssize_t read_mute_state(struct device *dev, struct device_attribute *attr, char *buf){
-    return sysfs_emit(buf, "%s\n", "0"); // returns always 0
+    return sysfs_emit(buf, "%d\n", headset->mute); // returns always 0
 }
 
 static ssize_t set_mute_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count){
     if (*buf == '0'){
-        printk(KERN_ALERT "%s", "calling unmute");
+        headset->mute = 0;
         unmute_mic(dev);
     } else if (*buf == '1'){
-        printk(KERN_ALERT "%s", "calling mute");
+        headset->mute = 1;
         mute_mic(dev);
     }
     return sizeof(count);
@@ -40,9 +42,6 @@ static ssize_t get_value(struct device *dev, struct device_attribute *attr, char
 }
 
 static ssize_t store_value(struct device *dev, struct device_attribute *attr, const char *buf, size_t count){
-    // missbehaves: echo "foobar2000" > myParam results in
-    // foobar2000
-    // 00
     printk(KERN_ALERT "%s", buf);
     return sizeof(count);
 }
@@ -62,33 +61,24 @@ static const struct attribute_group nari_attr_group = {
 
 /* newly inserted */
 static int connect_razer_nari(struct hid_device *hdev, const struct hid_device_id *id) {
-    // https://astro.uni-bonn.de/~sysstw/CompMan/ldp/lkmpg/node11.html
-    struct myDevice *myDevice;
     int ret;
-
-    printk(KERN_ALERT "razer nari connect called");
-
     /*register kernel space for later*/
-    myDevice = devm_kzalloc(&hdev->dev, sizeof(*myDevice), GFP_KERNEL);
-    if (!myDevice){
+    headset = devm_kzalloc(&hdev->dev, sizeof(*headset), GFP_KERNEL);
+    if (!headset){
         return -ENOMEM;
     }
-    myDevice->dev = &hdev->dev;
-
-    hid_set_drvdata(hdev, myDevice); // ?!?!
+    headset->dev = &hdev->dev;
 
     // create attribute groups
     ret = sysfs_create_group(&hdev->dev.kobj, &nari_attr_group);
     if (ret){
-        printk(KERN_ALERT "echo: Cannot register sysfs attribute group\n");
+        printk(KERN_WARNING "echo: Cannot register sysfs attribute group\n");
     }
     return 0;
 }
 
 static void remove_razer_nari(struct hid_device *hdev) {
     sysfs_remove_group(&hdev->dev.kobj, &nari_attr_group);
-    //kfree(&hdev->dev); // not needed, devm_kzalloc auto-frees memory
-    printk(KERN_ALERT "razer nari disconnect called");
 }
 
 static const struct hid_device_id razer_nari_ultimate[] = {

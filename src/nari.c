@@ -6,36 +6,23 @@
 #include <linux/hid.h>
 #include <linux/usb.h>
 
-void mute_mic(struct device *dev){
+/**
+ * internal method to set mute state of the headset
+ * @param dev pointer to the device
+ * @param state mute: 0x0001; unmute: 0x0000;
+ */
+void set_mute(struct device *dev, int state){
     struct usb_interface *intf = to_usb_interface(dev->parent);
     struct usb_device *usbdev = interface_to_usbdev(intf);
+    usb_control_msg(usbdev, usb_sndctrlpipe(usbdev, 0), 1, 0x21, 0x0100, 0x0300, &state, 1, USB_CTRL_SET_TIMEOUT);
+}
 
+void mute_mic(struct device *dev){
     int foo = 0x0001;
-
-    __u8 request = 1;
-    __u8 requesttype = 0x21;
-    __u16 value = 0x0100;
-    __u16 index = 0x0300;
-    //char *data = &foo;
-    __u16 size = 1;
-    int timeout = USB_CTRL_SET_TIMEOUT;
-
-    usb_control_msg(usbdev, usb_sndctrlpipe(usbdev, 0), request, requesttype, value, index, &foo, size, timeout);
+    set_mute(dev, foo);
 }
 
 void unmute_mic(struct device *dev){
-    struct usb_interface *intf = to_usb_interface(dev->parent);
-    struct usb_device *usbdev = interface_to_usbdev(intf);
-
     int foo = 0x0000;
-
-    __u8 request = 1;
-    __u8 requesttype = 0x21;
-    __u16 value = 0x0100;
-    __u16 index = 0x0300;
-    //char *data = &foo;
-    __u16 size = 1;
-    int timeout = USB_CTRL_SET_TIMEOUT;
-
-    usb_control_msg(usbdev, usb_sndctrlpipe(usbdev, 0), request, requesttype, value, index, &foo, size, timeout);
+    set_mute(dev, foo);
 }
