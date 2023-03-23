@@ -38,7 +38,7 @@ To wrap it up, the attempt to create a fully working driver and integrate it int
 To build and install the driver, following steps are necessary (Ubuntu):
 
 1. Install required dependencies: \
-   `sudo apt install linux-headers-$(uname -r)`
+   `sudo apt install linux-headers-$(uname -r) libusb-dev`
 2. Install driver\
    `sudo make all`
 
