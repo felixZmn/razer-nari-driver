@@ -7,30 +7,37 @@
 #include <linux/module.h>
 #include <linux/hid.h>
 #include <linux/sysfs.h>
+#include <linux/usb.h>
+
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Felix Zimmermann <felix.zimmermann.1.de@gmail.com>");
 MODULE_VERSION("0.0.9");
 
 // struct for device properties
-struct myDevice {
-    struct device *dev;
+struct razerNari {
+    struct usb_interface *interface;
+    struct hid_device *hdev;
+    struct urb *urb;
+    struct usb_device *udev;
+    struct usb_endpoint_descriptor *int_in_endpoint;
+    int buffer_size;
     long myParam;
     int mute;
 };
 
-struct myDevice *headset;
+struct razerNari *nari;
 
 static ssize_t read_mute_state(struct device *dev, struct device_attribute *attr, char *buf) {
-    return sysfs_emit(buf, "%d\n", headset->mute); // returns always 0
+    return sysfs_emit(buf, "%d\n", nari->mute); // returns always 0
 }
 
 static ssize_t set_mute_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
     if (*buf == '0') {
-        headset->mute = 0;
+        nari->mute = 0;
         unmute_mic(dev);
     } else if (*buf == '1') {
-        headset->mute = 1;
+        nari->mute = 1;
         mute_mic(dev);
     }
     return sizeof(count);
@@ -52,23 +59,57 @@ static struct attribute *nari_attrs[] = {&dev_attr_myParam.attr, &dev_attr_mute.
 
 static const struct attribute_group nari_attr_group = {.attrs = nari_attrs,};
 
+void complete_nari_urb(struct urb *urb) {
+    int *data;
+    printk(KERN_WARNING "echo: WOOOHOOO!\n");
+    data = urb->transfer_buffer;
+    printk("%d\n", data[0]);
+    usb_submit_urb(urb, GFP_KERNEL);
+}
+
+static int fill_urb(struct razerNari *dev) {
+    void *int_buffer;
+
+    dev->urb = usb_alloc_urb(0, GFP_KERNEL);
+
+    int_buffer = kmalloc(dev->buffer_size, GFP_KERNEL);
+
+
+    usb_fill_int_urb(dev->urb, dev->udev, usb_rcvintpipe(dev->udev, dev->int_in_endpoint->bEndpointAddress), int_buffer,
+                     dev->buffer_size, complete_nari_urb, dev, 5);
+
+    return usb_submit_urb(dev->urb, GFP_KERNEL);
+}
+
 /* newly inserted */
 static int connect_razer_nari(struct hid_device *hdev, const struct hid_device_id *id) {
-    int ret;
+    int result;
     /*register kernel space for later*/
-    headset = devm_kzalloc(&hdev->dev, sizeof(*headset), GFP_KERNEL);
-    if (!headset) {
+    nari = devm_kzalloc(&hdev->dev, sizeof(*nari), GFP_KERNEL);
+
+    if (!nari) {
         return -ENOMEM;
     }
-    headset->dev = &hdev->dev;
-
+    nari->buffer_size = 4; // how many bytes
+    nari->hdev = hdev;
+    nari->udev = to_usb_device(hdev->dev.parent->parent);
+    nari->interface = to_usb_interface(hdev->dev.parent);
+    result = usb_find_common_endpoints_reverse(nari->interface->cur_altsetting, NULL, NULL, &nari->int_in_endpoint,
+                                               NULL);
+    if (result) {
+        // error
+        return 0;
+    }
     // create attribute groups
-    ret = sysfs_create_group(&hdev->dev.kobj, &nari_attr_group);
-    if (ret) {
+    if (sysfs_create_group(&hdev->dev.kobj, &nari_attr_group)) {
         printk(KERN_WARNING "echo: Cannot register sysfs attribute group\n");
     }
+
+    fill_urb(nari);
+
     return 0;
 }
+
 
 static void remove_razer_nari(struct hid_device *hdev) {
     sysfs_remove_group(&hdev->dev.kobj, &nari_attr_group);
