@@ -65,16 +65,18 @@ void complete_nari_urb(struct urb *urb) {
     switch (data[0]) {
         case 101:
             printk(KERN_DEFAULT "mic muted");
+            nari->mute = 1;
             break;
         case 1125:
             printk("mic active");
+            nari->mute = 0;
             break;
-//        case 356:
-//            printk("nari connected to dongle");
-//            break;
-//        case 868:
-//            printk("nari switched off");
-//            break;
+        case 356:
+            printk("nari connected");
+            break;
+        case 868:
+            printk("nari disconnected");
+            break;
         default:
             printk("%d\n", data[0]);
             break;
