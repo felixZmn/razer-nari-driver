@@ -16,10 +16,11 @@ The audio-part of the headset works flawless, thanks to [this](https://github.co
 
 ## Problems
 ### Solved
-- [x] Set mute state by writing 0 or 1 to the created sysfs-File
+- [x] Activate/deactivate mic by writing 0 or 1 from userspace to the created sysfs-File
+- [x] Save the mic active state when the mute button on the headset is pressed
 
 ### Open
-- [ ] Save the mute state when the mute button on the Headset is pressed
+- [ ] sysfs files permissions
 - [ ] Control mic sensitivity
 - [ ] Control haptic feedback
 - [ ] Control rgb light

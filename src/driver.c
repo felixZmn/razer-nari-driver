@@ -14,74 +14,102 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Felix Zimmermann <felix.zimmermann.1.de@gmail.com>");
 MODULE_VERSION("0.0.9");
 
+// enum to collect usb events
+enum interruptEvents {
+    MIC_ENABLED = 101,
+    MIC_DISABLED = 1125,
+    CONNECTED = 356,
+    DISCONNECTED = 868,
+};
+
+// struct for microphone properties
+struct mic {
+    int volume;
+    int active;
+};
+
 // struct for device properties
 struct razerNari {
     struct usb_interface *interface;
     struct urb *urb;
     struct usb_device *udev;
     struct usb_endpoint_descriptor *int_in_endpoint;
+    struct mic mic;
     int buffer_size;
     long myParam;
-    int mute;
 };
 
 struct razerNari *nari;
 
-static ssize_t read_mute_state(struct device *dev, struct device_attribute *attr, char *buf) {
-    return sysfs_emit(buf, "%d\n", nari->mute); // returns always 0
+/**
+ * Provide mic state to sysfs
+ */
+static ssize_t read_mic_state(struct device *dev, struct device_attribute *attr, char *buf) {
+    return sysfs_emit(buf, "%d\n", nari->mic.active);
 }
 
-static ssize_t set_mute_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
+/**
+ * Read mic state from sysfs
+ */
+static ssize_t set_mic_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
     if (*buf == '0') {
-        nari->mute = 0;
-        unmute_mic(dev);
+        // deactivate mic
+        nari->mic.active = 1;
+        set_mute(dev, 0x0001);
     } else if (*buf == '1') {
-        nari->mute = 1;
-        mute_mic(dev);
+        // activate mic
+        nari->mic.active = 0;
+        set_mute(dev, 0x0000);
     }
     return sizeof(count);
 }
 
+// sysfs sample
 static ssize_t get_value(struct device *dev, struct device_attribute *attr, char *buf) {
     return sysfs_emit(buf, "%s\n", "foobar2000");
 }
 
+// sysfs sample
 static ssize_t store_value(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
     printk(KERN_DEFAULT "%s", buf);
     return sizeof(count);
 }
 
-static DEVICE_ATTR(mute, S_IRUGO | S_IWUSR, read_mute_state, set_mute_state);
+static DEVICE_ATTR(active, S_IRUGO | S_IWUSR, read_mic_state, set_mic_state);
 static DEVICE_ATTR(myParam, S_IRUGO | S_IWUSR, get_value, store_value);
 
-static struct attribute *nari_attrs[] = {&dev_attr_myParam.attr, &dev_attr_mute.attr, NULL};
+static struct attribute *nari_attrs[] = {&dev_attr_myParam.attr, &dev_attr_active.attr, NULL};
 
 static const struct attribute_group nari_attr_group = {.attrs = nari_attrs,};
 
+/**
+ * Interrupt handler
+ * @param urb contains interrupt data
+ */
 void complete_nari_urb(struct urb *urb) {
     int *data;
     data = urb->transfer_buffer;
-
     switch (data[0]) {
-        case 101:
-            printk(KERN_DEFAULT "mic muted");
-            nari->mute = 1;
+        case MIC_ENABLED:
+            // activate mic
+            nari->mic.active = 1;
             break;
-        case 1125:
-            printk("mic active");
-            nari->mute = 0;
+        case MIC_DISABLED:
+            // deactivate mic
+            nari->mic.active = 0;
             break;
-        case 356:
-            printk("nari connected");
+        case CONNECTED:
+            // wireless connection between dongle and headset established
             break;
-        case 868:
-            printk("nari disconnected");
+        case DISCONNECTED:
+            // wireless connection between dongle and headset lost
             break;
         default:
             printk("%d\n", data[0]);
             break;
     }
 
+    // resubmit urb to catch next interrupt
     usb_submit_urb(urb, GFP_KERNEL);
 }
 
@@ -97,6 +125,7 @@ static int create_interrupt_urb(struct razerNari *dev) {
 /* newly inserted */
 static int probe_nari(struct hid_device *hdev, const struct hid_device_id *id) {
     /*register kernel space for later*/
+    pr_info("initializing nari...\n");
     nari = devm_kzalloc(&hdev->dev, sizeof(*nari), GFP_KERNEL);
 
     if (!nari) {
@@ -111,11 +140,12 @@ static int probe_nari(struct hid_device *hdev, const struct hid_device_id *id) {
     }
     // create attribute groups
     if (sysfs_create_group(&hdev->dev.kobj, &nari_attr_group)) {
-        printk(KERN_DEFAULT "Cannot register sysfs attribute group\n");
+        printk(KERN_DEFAULT "Cannot register sysfs attribute group\n"); // should driver exit?
     }
 
     create_interrupt_urb(nari);
 
+    pr_info("nari initialized\n");
     return 0;
 }
 
