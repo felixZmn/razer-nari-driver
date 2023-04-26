@@ -16,10 +16,7 @@ MODULE_VERSION("0.0.9");
 
 // enum to collect usb events
 enum interruptEvents {
-    MIC_ENABLED = 101,
-    MIC_DISABLED = 1125,
-    CONNECTED = 356,
-    DISCONNECTED = 868,
+    MIC_ENABLED = 101, MIC_DISABLED = 1125, CONNECTED = 356, DISCONNECTED = 868,
 };
 
 // struct for microphone properties
@@ -44,24 +41,19 @@ struct razerNari *nari;
 /**
  * Read value from driver and provide to sysfs
  */
-static ssize_t read_mic_state(struct device *dev, struct device_attribute *attr, char *buf)
-{
+static ssize_t read_mic_state(struct device *dev, struct device_attribute *attr, char *buf) {
     return sysfs_emit(buf, "%d\n", nari->mic.active);
 }
 
 /**
  * write mic state from sysfs to driver
  */
-static ssize_t write_mic_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-    if (*buf == '0')
-    {
+static ssize_t write_mic_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
+    if (*buf == '0') {
         // deactivate mic
         nari->mic.active = 1;
         set_mute(dev, 0x01);
-    }
-    else if (*buf == '1')
-    {
+    } else if (*buf == '1') {
         // activate mic
         nari->mic.active = 0;
         set_mute(dev, 0x00);
@@ -70,14 +62,12 @@ static ssize_t write_mic_state(struct device *dev, struct device_attribute *attr
 }
 
 // sysfs sample
-static ssize_t read_mic_volume(struct device *dev, struct device_attribute *attr, char *buf)
-{
+static ssize_t read_mic_volume(struct device *dev, struct device_attribute *attr, char *buf) {
     return sysfs_emit(buf, "%d\n", nari->mic.volume);
 }
 
 // sysfs sample
-static ssize_t write_mic_volume(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
+static ssize_t write_mic_volume(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
     int percentage;
     if (kstrtoint(buf, 10, &percentage) != 0) {
         // error
