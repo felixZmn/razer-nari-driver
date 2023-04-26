@@ -10,4 +10,8 @@
 
 void set_mute(struct device *dev, int state);
 
+void set_mic_volume(struct device *dev, int percentage);
+
+int percentage_to_loudness(int percentage);
+
 #endif // RAZER_NARI_DRIVER_NARI_H

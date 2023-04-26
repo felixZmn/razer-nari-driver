@@ -42,41 +42,53 @@ struct razerNari {
 struct razerNari *nari;
 
 /**
- * Provide mic state to sysfs
+ * Read value from driver and provide to sysfs
  */
-static ssize_t read_mic_state(struct device *dev, struct device_attribute *attr, char *buf) {
+static ssize_t read_mic_state(struct device *dev, struct device_attribute *attr, char *buf)
+{
     return sysfs_emit(buf, "%d\n", nari->mic.active);
 }
 
 /**
- * Read mic state from sysfs
+ * write mic state from sysfs to driver
  */
-static ssize_t set_mic_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
-    if (*buf == '0') {
+static ssize_t write_mic_state(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    if (*buf == '0')
+    {
         // deactivate mic
         nari->mic.active = 1;
-        set_mute(dev, 0x0001);
-    } else if (*buf == '1') {
+        set_mute(dev, 0x01);
+    }
+    else if (*buf == '1')
+    {
         // activate mic
         nari->mic.active = 0;
-        set_mute(dev, 0x0000);
+        set_mute(dev, 0x00);
     }
     return sizeof(count);
 }
 
 // sysfs sample
-static ssize_t get_value(struct device *dev, struct device_attribute *attr, char *buf) {
-    return sysfs_emit(buf, "%s\n", "foobar2000");
+static ssize_t read_mic_volume(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return sysfs_emit(buf, "%d\n", nari->mic.volume);
 }
 
 // sysfs sample
-static ssize_t store_value(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
-    printk(KERN_DEFAULT "%s", buf);
+static ssize_t write_mic_volume(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    int percentage;
+    if (kstrtoint(buf, 10, &percentage) != 0) {
+        // error
+        return sizeof(count);
+    }
+    set_mic_volume(dev, percentage);
     return sizeof(count);
 }
 
-static DEVICE_ATTR(active, S_IRUGO | S_IWUSR, read_mic_state, set_mic_state);
-static DEVICE_ATTR(myParam, S_IRUGO | S_IWUSR, get_value, store_value);
+static DEVICE_ATTR(active, S_IRUGO | S_IWUSR, read_mic_state, write_mic_state);
+static DEVICE_ATTR(myParam, S_IRUGO | S_IWUSR, read_mic_volume, write_mic_volume);
 
 static struct attribute *nari_attrs[] = {&dev_attr_myParam.attr, &dev_attr_active.attr, NULL};
 
