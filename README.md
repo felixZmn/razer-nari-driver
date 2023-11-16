@@ -1,34 +1,40 @@
-# razer-nari-driver
+# Razer Nari Driver
 
-An attempt to develop an Ubuntu driver for the Razer Nari Ultimate Headset
+This is a prototypical (buggy! incomplete!) implementation of a driver for the Razer Nari Ultimate headset. It is based on the [Openrazer-Project](https://github.com/openrazer/openrazer).
 
-## Goal
+## Status Quo
 
-This project has two goals:
-1. Gain a better understanding of usb and hardware drivers
-2. Develop linux support for my headset (e. g. read battery state, disable rgb light, ...)
+The Razer Nari Headset lacks Linux support. Sound and microphone work (nearly, you need [this](https://github.com/imustafin/razer-nari-pulseaudio-profile) audio profile) out of the box, the other features (rgb light, haptic feedback, ...) are not controllable. The settings are saved in the headset itself, so you can configure it on a Windows machine and use it on Linux. It would be nice to have a Linux driver, so you can configure the device on such systems too.
 
-An optional goal is the integration of the Headset into the Ubuntu power settings section, like shown in the screenshot: 
+## Goals
 
-![Image of the Ubuntu power settings section](https://raw.githubusercontent.com/felixZmn/razer-nari-driver/main/images/power%20settings.png)
+This project has two main goals:
 
-The audio-part of the headset works flawless, thanks to [this](https://github.com/imustafin/razer-nari-pulseaudio-profile) Project.
+1. Develop an usable driver for the Razer Nari Headset.\
+   My personal main goal is to read the battery state of the headset, so that I can integrate it into the Ubuntu power settings section like shown in the screenshot.
+   ![Image of the Ubuntu power settings section](https://raw.githubusercontent.com/felixZmn/razer-nari-driver/main/images/power%20settings.png)
+2. Learn more about usb and hardware drivers in general.\
+   I'm generally interested in hardware and low-level programming, so this project is a great opportunity to learn more about it.
 
 ## Problems
+
 ### Solved
-- [x] Activate/deactivate mic by writing 0 or 1 from userspace to the created sysfs-File
-- [x] Save the mic active state when the mute button on the headset is pressed
+
+-   [x] Activate/deactivate mic by writing 0 or 1 from userspace to the created sysfs-File
+-   [x] Save the mic active state when the mute button on the headset is pressed
 
 ### Open
-- [ ] sysfs files permissions
-- [ ] Control mic sensitivity
-- [ ] Control haptic feedback
-- [ ] Control rgb light
-- [ ] Report battery/charing state (maybe `linux/power_supply.h` could be useful?)
+
+-   [ ] sysfs files permissions
+-   [ ] Control mic sensitivity
+-   [ ] Control haptic feedback
+-   [ ] Control rgb light
+-   [ ] Report battery/charing state (maybe `linux/power_supply.h` could be useful?)
 
 ## Unresolved problems
-1. I was not able to reverse engineer the reports send from the driver to the headset. The data sent between driver and Headset is seemingly random. Because of that, I couldn't get any actual information about the state of the headset (Is it charging? What's the current color and color effect? etc.).
-2. The data send from the driver to the headset is seemingly decoded. For example, the microphone sensitivity is controlled by an 4 char hex value. But I couldn't figure out, how the encoding algorithm is working.
+
+1. I was unable to reverse engineer the reports sent from the headset to the driver. The data sent between them seems to be random. I could not find any pattern or structure in the data. That's not to say there isn't a pattern, but I just couldn't find one. The consequence of this is, that I can't read status information (battery state, current color and effect, ...) from the headset.
+2. The data send from the driver to the headset is seemingly encoded. For example, the microphone sensitivity is controlled by an seemingly random 4 char hex value, which represents a sensitivity value from 0 to 100. Because I could not find an efficient mapping algorithm, I can only use a lookup table to map the values. This is not a big problem, but it's not very elegant, and therefore not fully implemented.
 
 ## Further Reading
 
